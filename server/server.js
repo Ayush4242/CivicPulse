@@ -13,14 +13,14 @@ connectDB();
 const app = express();
 
 // Middlewares
-app.use("/api/auth", authRoutes);
-app.use("/api/incidents", incidentRoutes);
 app.use(cors());
 app.use(express.json());
 app.use(morgan("dev"));
-app.use("/api/upload", uploadRoutes);
+
 // Routes
 app.use("/api/auth", authRoutes);
+app.use("/api/incidents", incidentRoutes);
+app.use("/api/upload", uploadRoutes);
 
 app.get("/", (req, res) => {
   res.json({
