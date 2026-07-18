@@ -2,103 +2,147 @@ const asyncHandler = require("../utils/asyncHandler");
 const Incident = require("../models/Incident");
 
 // -----------------------------------------------------
-// Priority score helper
+// Calculate priority score
 // -----------------------------------------------------
 
-const calculatePriorityScore = (severity) => {
+const calculatePriorityScore = (
+  severity,
+  upvoteCount = 0,
+  createdAt = new Date()
+) => {
   const severityScores = {
-    low: 1,
-    medium: 2,
-    high: 3,
+    low: 10,
+    medium: 20,
+    high: 30,
   };
 
-  return severityScores[severity] || 2;
+  const severityScore =
+    severityScores[severity] || 20;
+
+  // Maximum 20 points from upvotes
+  const upvoteScore = Math.min(
+    upvoteCount,
+    20
+  );
+
+  const createdDate =
+    new Date(createdAt);
+
+  const currentDate =
+    new Date();
+
+  const ageInMilliseconds =
+    currentDate - createdDate;
+
+  const ageInDays =
+    Math.floor(
+      ageInMilliseconds /
+        (1000 * 60 * 60 * 24)
+    );
+
+  // Maximum 10 points from age
+  const ageScore = Math.min(
+    Math.max(ageInDays, 0),
+    10
+  );
+
+  return (
+    severityScore +
+    upvoteScore +
+    ageScore
+  );
 };
 
 // -----------------------------------------------------
-// @desc    Check for nearby duplicate incidents
-// @route   POST /api/incidents/check-duplicates
-// @access  Private
+// Check nearby duplicates
+// POST /api/incidents/check-duplicates
+// Private
 // -----------------------------------------------------
 
-const checkDuplicates = asyncHandler(async (req, res) => {
-  const {
-    category,
-    longitude,
-    latitude,
-  } = req.body;
+const checkDuplicates = asyncHandler(
+  async (req, res) => {
+    const {
+      category,
+      longitude,
+      latitude,
+    } = req.body;
 
-  if (
-    !category ||
-    longitude === undefined ||
-    latitude === undefined
-  ) {
-    return res.status(200).json({
-      success: true,
-      duplicatesFound: false,
-      duplicates: [],
-    });
-  }
+    if (
+      !category ||
+      longitude === undefined ||
+      latitude === undefined
+    ) {
+      return res.status(200).json({
+        success: true,
+        duplicatesFound: false,
+        duplicates: [],
+      });
+    }
 
-  const lng = Number(longitude);
-  const lat = Number(latitude);
+    const lng = Number(longitude);
+    const lat = Number(latitude);
 
-  if (
-    Number.isNaN(lng) ||
-    Number.isNaN(lat)
-  ) {
-    res.status(400);
-    throw new Error("Invalid coordinates");
-  }
+    if (
+      Number.isNaN(lng) ||
+      Number.isNaN(lat)
+    ) {
+      res.status(400);
 
-  /*
-    Search conditions:
+      throw new Error(
+        "Invalid coordinates"
+      );
+    }
 
-    1. Same category
-    2. Incident is not resolved/rejected
-    3. Within 150 meters
-  */
+    const duplicates =
+      await Incident.find({
+        category,
 
-  const duplicates = await Incident.find({
-    category,
-
-    status: {
-      $nin: ["resolved", "rejected"],
-    },
-
-    "location.coordinates": {
-      $near: {
-        $geometry: {
-          type: "Point",
-          coordinates: [lng, lat],
+        status: {
+          $nin: [
+            "resolved",
+            "rejected",
+          ],
         },
 
-        $maxDistance: 150,
-      },
-    },
-  })
-    .populate(
-      "reportedBy",
-      "name role"
-    )
-    .limit(5);
+        "location.coordinates": {
+          $near: {
+            $geometry: {
+              type: "Point",
 
-  res.status(200).json({
-    success: true,
+              coordinates: [
+                lng,
+                lat,
+              ],
+            },
 
-    duplicatesFound:
-      duplicates.length > 0,
+            $maxDistance: 150,
+          },
+        },
+      })
+        .populate(
+          "reportedBy",
+          "name role"
+        )
+        .limit(5);
 
-    count: duplicates.length,
+    res.status(200).json({
+      success: true,
 
-    duplicates,
-  });
-});
+      duplicatesFound:
+        duplicates.length > 0,
+
+      count:
+        duplicates.length,
+
+      duplicates,
+    });
+  }
+);
 
 // -----------------------------------------------------
-// @desc    Create incident
-// @route   POST /api/incidents
-// @access  Private
+// Create incident
+// POST /api/incidents
+// Private
 // -----------------------------------------------------
 
 const createIncident = asyncHandler(
@@ -138,14 +182,18 @@ const createIncident = asyncHandler(
       longitude !== undefined &&
       latitude !== undefined
     ) {
-      const lng = Number(longitude);
-      const lat = Number(latitude);
+      const lng =
+        Number(longitude);
+
+      const lat =
+        Number(latitude);
 
       if (
         Number.isNaN(lng) ||
         Number.isNaN(lat)
       ) {
         res.status(400);
+
         throw new Error(
           "Invalid location coordinates"
         );
@@ -154,8 +202,10 @@ const createIncident = asyncHandler(
       location.coordinates = {
         type: "Point",
 
-        // GeoJSON = longitude first
-        coordinates: [lng, lat],
+        coordinates: [
+          lng,
+          lat,
+        ],
       };
     }
 
@@ -167,22 +217,28 @@ const createIncident = asyncHandler(
 
         category,
 
-        severity: selectedSeverity,
+        severity:
+          selectedSeverity,
 
         status: "reported",
 
         priorityScore:
           calculatePriorityScore(
-            selectedSeverity
+            selectedSeverity,
+            0
           ),
 
         location,
 
-        images: Array.isArray(images)
-          ? images
-          : [],
+        images:
+          Array.isArray(images)
+            ? images
+            : [],
 
-        reportedBy: req.user.id,
+        reportedBy:
+          req.user.id,
+
+        upvotes: [],
 
         timeline: [
           {
@@ -216,9 +272,9 @@ const createIncident = asyncHandler(
 );
 
 // -----------------------------------------------------
-// @desc    Get all incidents
-// @route   GET /api/incidents
-// @access  Public
+// Get all incidents
+// GET /api/incidents
+// Public
 // -----------------------------------------------------
 
 const getIncidents = asyncHandler(
@@ -233,20 +289,49 @@ const getIncidents = asyncHandler(
           createdAt: -1,
         });
 
+    /*
+      Recalculate score when reading.
+
+      This means age contributes even if
+      nobody has recently updated the incident.
+    */
+
+    const updatedIncidents =
+      incidents.map(
+        (incident) => {
+          const newScore =
+            calculatePriorityScore(
+              incident.severity,
+
+              incident.upvotes
+                ?.length || 0,
+
+              incident.createdAt
+            );
+
+          incident.priorityScore =
+            newScore;
+
+          return incident;
+        }
+      );
+
     res.status(200).json({
       success: true,
 
-      count: incidents.length,
+      count:
+        updatedIncidents.length,
 
-      incidents,
+      incidents:
+        updatedIncidents,
     });
   }
 );
 
 // -----------------------------------------------------
-// @desc    Get incident by ID
-// @route   GET /api/incidents/:id
-// @access  Public
+// Get single incident
+// GET /api/incidents/:id
+// Public
 // -----------------------------------------------------
 
 const getIncidentById = asyncHandler(
@@ -272,6 +357,16 @@ const getIncidentById = asyncHandler(
       );
     }
 
+    incident.priorityScore =
+      calculatePriorityScore(
+        incident.severity,
+
+        incident.upvotes
+          ?.length || 0,
+
+        incident.createdAt
+      );
+
     res.status(200).json({
       success: true,
 
@@ -281,9 +376,9 @@ const getIncidentById = asyncHandler(
 );
 
 // -----------------------------------------------------
-// @desc    Update incident
-// @route   PUT /api/incidents/:id
-// @access  Private
+// Update incident
+// PUT /api/incidents/:id
+// Private
 // -----------------------------------------------------
 
 const updateIncident = asyncHandler(
@@ -333,16 +428,6 @@ const updateIncident = asyncHandler(
     );
 
     if (
-      req.body.severity !==
-      undefined
-    ) {
-      incident.priorityScore =
-        calculatePriorityScore(
-          req.body.severity
-        );
-    }
-
-    if (
       req.body.address !==
       undefined
     ) {
@@ -385,6 +470,16 @@ const updateIncident = asyncHandler(
       };
     }
 
+    incident.priorityScore =
+      calculatePriorityScore(
+        incident.severity,
+
+        incident.upvotes
+          ?.length || 0,
+
+        incident.createdAt
+      );
+
     await incident.save();
 
     res.status(200).json({
@@ -399,9 +494,9 @@ const updateIncident = asyncHandler(
 );
 
 // -----------------------------------------------------
-// @desc    Delete incident
-// @route   DELETE /api/incidents/:id
-// @access  Private
+// Delete incident
+// DELETE /api/incidents/:id
+// Private
 // -----------------------------------------------------
 
 const deleteIncident = asyncHandler(
@@ -441,6 +536,91 @@ const deleteIncident = asyncHandler(
   }
 );
 
+// -----------------------------------------------------
+// Toggle incident upvote
+// POST /api/incidents/:id/upvote
+// Private
+// -----------------------------------------------------
+
+const toggleUpvote = asyncHandler(
+  async (req, res) => {
+    const incident =
+      await Incident.findById(
+        req.params.id
+      );
+
+    if (!incident) {
+      res.status(404);
+
+      throw new Error(
+        "Incident not found"
+      );
+    }
+
+    const userId =
+      req.user.id;
+
+    const existingUpvoteIndex =
+      incident.upvotes.findIndex(
+        (id) =>
+          id.toString() ===
+          userId
+      );
+
+    let upvoted;
+
+    if (
+      existingUpvoteIndex === -1
+    ) {
+      // User has not upvoted yet
+      incident.upvotes.push(
+        userId
+      );
+
+      upvoted = true;
+    } else {
+      // User already upvoted,
+      // so remove it
+      incident.upvotes.splice(
+        existingUpvoteIndex,
+        1
+      );
+
+      upvoted = false;
+    }
+
+    incident.priorityScore =
+      calculatePriorityScore(
+        incident.severity,
+
+        incident.upvotes.length,
+
+        incident.createdAt
+      );
+
+    await incident.save();
+
+    res.status(200).json({
+      success: true,
+
+      message: upvoted
+        ? "Incident upvoted successfully"
+        : "Upvote removed successfully",
+
+      upvoted,
+
+      upvoteCount:
+        incident.upvotes.length,
+
+      upvotes:
+        incident.upvotes,
+
+      priorityScore:
+        incident.priorityScore,
+    });
+  }
+);
+
 module.exports = {
   createIncident,
   getIncidents,
@@ -448,4 +628,5 @@ module.exports = {
   updateIncident,
   deleteIncident,
   checkDuplicates,
+  toggleUpvote,
 };

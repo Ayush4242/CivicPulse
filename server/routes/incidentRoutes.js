@@ -7,6 +7,7 @@ const {
   updateIncident,
   deleteIncident,
   checkDuplicates,
+  toggleUpvote,
 } = require(
   "../controllers/incidentController"
 );
@@ -15,7 +16,8 @@ const protect = require(
   "../middleware/authMiddleware"
 );
 
-const router = express.Router();
+const router =
+  express.Router();
 
 // Duplicate detection
 router.post(
@@ -32,6 +34,14 @@ router
     protect,
     createIncident
   );
+
+// Upvote
+// Must be before /:id
+router.post(
+  "/:id/upvote",
+  protect,
+  toggleUpvote
+);
 
 // Individual incident
 router

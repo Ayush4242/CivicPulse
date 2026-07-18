@@ -1,99 +1,307 @@
-import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import {
+  useEffect,
+  useState,
+} from "react";
+
+import {
+  useParams,
+  useNavigate,
+} from "react-router-dom";
 
 import api from "../services/api";
+
 import IncidentMap from "../components/IncidentMap";
 
 function IncidentDetails() {
-  const { id } = useParams();
+  const { id } =
+    useParams();
 
-  const [incident, setIncident] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const navigate =
+    useNavigate();
+
+  const [
+    incident,
+    setIncident,
+  ] = useState(null);
+
+  const [
+    loading,
+    setLoading,
+  ] = useState(true);
+
+  const [
+    upvoteLoading,
+    setUpvoteLoading,
+  ] = useState(false);
+
+  const [error, setError] =
+    useState("");
+
+  const token =
+    localStorage.getItem(
+      "token"
+    );
+
+  let currentUser = null;
+
+  try {
+    currentUser =
+      JSON.parse(
+        localStorage.getItem(
+          "user"
+        )
+      );
+  } catch {
+    currentUser = null;
+  }
+
+  // ---------------------------------------
+  // Fetch incident
+  // ---------------------------------------
 
   useEffect(() => {
-    const fetchIncident = async () => {
-      try {
-        setLoading(true);
-        setError("");
+    const fetchIncident =
+      async () => {
+        try {
+          setLoading(true);
 
-        const response = await api.get(
-          `/api/incidents/${id}`
-        );
+          setError("");
 
-        setIncident(response.data.incident);
-      } catch (error) {
-        console.error(
-          "Error fetching incident:",
-          error
-        );
+          const response =
+            await api.get(
+              `/api/incidents/${id}`
+            );
 
-        setError(
-          error.response?.data?.message ||
-            "Unable to load incident."
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
+          setIncident(
+            response.data
+              .incident
+          );
+        } catch (error) {
+          console.error(
+            "Error fetching incident:",
+            error
+          );
+
+          setError(
+            error.response?.data
+              ?.message ||
+              "Unable to load incident."
+          );
+        } finally {
+          setLoading(false);
+        }
+      };
 
     fetchIncident();
   }, [id]);
 
+  // ---------------------------------------
+  // Check if current user upvoted
+  // ---------------------------------------
+
+  const hasUpvoted =
+    incident?.upvotes?.some(
+      (userId) =>
+        userId.toString() ===
+        currentUser?.id
+    ) || false;
+
+  // ---------------------------------------
+  // Toggle upvote
+  // ---------------------------------------
+
+  const handleUpvote =
+    async () => {
+      if (!token) {
+        navigate("/login");
+
+        return;
+      }
+
+      setUpvoteLoading(true);
+
+      setError("");
+
+      try {
+        const response =
+          await api.post(
+            `/api/incidents/${id}/upvote`
+          );
+
+        setIncident(
+          (previousIncident) => ({
+            ...previousIncident,
+
+            upvotes:
+              response.data
+                .upvotes,
+
+            priorityScore:
+              response.data
+                .priorityScore,
+          })
+        );
+      } catch (error) {
+        console.error(
+          "Upvote error:",
+          error
+        );
+
+        setError(
+          error.response?.data
+            ?.message ||
+            "Unable to update upvote."
+        );
+      } finally {
+        setUpvoteLoading(false);
+      }
+    };
+
+  // ---------------------------------------
+  // Loading
+  // ---------------------------------------
+
   if (loading) {
-    return <p>Loading incident...</p>;
+    return (
+      <p>
+        Loading incident...
+      </p>
+    );
   }
 
-  if (error) {
+  if (error && !incident) {
     return <p>{error}</p>;
   }
 
   if (!incident) {
-    return <p>Incident not found.</p>;
+    return (
+      <p>
+        Incident not found.
+      </p>
+    );
   }
 
   return (
     <div>
 
-      <section>
-        <h1>{incident.title}</h1>
+      {error && (
+        <p>{error}</p>
+      )}
 
-        <p>{incident.description}</p>
+      {/* Header */}
+
+      <section>
+        <h1>
+          {incident.title}
+        </h1>
+
+        <p>
+          {
+            incident.description
+          }
+        </p>
       </section>
 
       <hr />
 
+      {/* Community verification */}
+
       <section>
-        <h2>Incident Information</h2>
+        <h2>
+          Community Verification
+        </h2>
 
         <p>
-          <strong>Category:</strong>{" "}
+          If you have seen or
+          confirmed this issue,
+          upvote it instead of
+          creating another report.
+        </p>
+
+        <button
+          type="button"
+          onClick={
+            handleUpvote
+          }
+          disabled={
+            upvoteLoading
+          }
+        >
+          {upvoteLoading
+            ? "Updating..."
+            : hasUpvoted
+              ? `▲ Upvoted (${incident.upvotes?.length || 0})`
+              : `△ Upvote (${incident.upvotes?.length || 0})`}
+        </button>
+
+        {!token && (
+          <p>
+            Login to confirm this
+            incident.
+          </p>
+        )}
+      </section>
+
+      <hr />
+
+      {/* Incident information */}
+
+      <section>
+        <h2>
+          Incident Information
+        </h2>
+
+        <p>
+          <strong>
+            Category:
+          </strong>{" "}
           {incident.category}
         </p>
 
         <p>
-          <strong>Severity:</strong>{" "}
+          <strong>
+            Severity:
+          </strong>{" "}
           {incident.severity}
         </p>
 
         <p>
-          <strong>Status:</strong>{" "}
+          <strong>
+            Status:
+          </strong>{" "}
           {incident.status}
         </p>
 
         <p>
-          <strong>Priority Score:</strong>{" "}
-          {incident.priorityScore}
+          <strong>
+            Priority Score:
+          </strong>{" "}
+          {
+            incident.priorityScore
+          }
         </p>
 
         <p>
-          <strong>Reported by:</strong>{" "}
-          {incident.reportedBy?.name ||
+          <strong>
+            Community Upvotes:
+          </strong>{" "}
+          {incident.upvotes
+            ?.length || 0}
+        </p>
+
+        <p>
+          <strong>
+            Reported by:
+          </strong>{" "}
+          {incident.reportedBy
+            ?.name ||
             "Unknown User"}
         </p>
 
         <p>
-          <strong>Reported on:</strong>{" "}
+          <strong>
+            Reported on:
+          </strong>{" "}
           {incident.createdAt
             ? new Date(
                 incident.createdAt
@@ -104,13 +312,21 @@ function IncidentDetails() {
 
       <hr />
 
-      <section>
-        <h2>Evidence Photos</h2>
+      {/* Images */}
 
-        {incident.images?.length > 0 ? (
+      <section>
+        <h2>
+          Evidence Photos
+        </h2>
+
+        {incident.images
+          ?.length > 0 ? (
           <div>
             {incident.images.map(
-              (image, index) => (
+              (
+                image,
+                index
+              ) => (
                 <img
                   key={`${image}-${index}`}
                   src={image}
@@ -125,43 +341,48 @@ function IncidentDetails() {
           </div>
         ) : (
           <p>
-            No evidence photos uploaded.
+            No evidence photos
+            uploaded.
           </p>
         )}
       </section>
 
       <hr />
 
+      {/* Location */}
+
       <section>
-        <h2>Location</h2>
+        <h2>
+          Location
+        </h2>
 
         <p>
-          {incident.location?.address ||
+          {incident.location
+            ?.address ||
             "Address unavailable"}
         </p>
 
-        <IncidentMap incident={incident} />
+        <IncidentMap
+          incident={incident}
+        />
       </section>
 
       <hr />
 
-      <section>
-        <h2>Community Activity</h2>
-
-        <p>
-          <strong>Upvotes:</strong>{" "}
-          {incident.upvotes?.length || 0}
-        </p>
-      </section>
-
-      <hr />
+      {/* Timeline */}
 
       <section>
-        <h2>Incident Timeline</h2>
+        <h2>
+          Incident Timeline
+        </h2>
 
-        {incident.timeline?.length > 0 ? (
+        {incident.timeline
+          ?.length > 0 ? (
           incident.timeline.map(
-            (event, index) => (
+            (
+              event,
+              index
+            ) => (
               <div
                 key={`${event.timestamp}-${index}`}
               >
@@ -169,12 +390,19 @@ function IncidentDetails() {
                   {event.status}
                 </strong>
 
-                <p>{event.message}</p>
+                <p>
+                  {event.message}
+                </p>
 
-                {event.updatedBy?.name && (
+                {event.updatedBy
+                  ?.name && (
                   <p>
                     Updated by:{" "}
-                    {event.updatedBy.name}
+                    {
+                      event
+                        .updatedBy
+                        .name
+                    }
                   </p>
                 )}
 
@@ -190,7 +418,8 @@ function IncidentDetails() {
           )
         ) : (
           <p>
-            No timeline updates available.
+            No timeline updates
+            available.
           </p>
         )}
       </section>
