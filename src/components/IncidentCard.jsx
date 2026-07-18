@@ -4,30 +4,61 @@ function IncidentCard({ incident }) {
   return (
     <article>
 
+      {incident.images?.length > 0 && (
+        <img
+          src={incident.images[0]}
+          alt={incident.title}
+          width="300"
+          loading="lazy"
+        />
+      )}
+
       <h2>{incident.title}</h2>
 
       <p>
-        Category: {incident.category}
+        {incident.description?.length > 150
+          ? `${incident.description.slice(
+              0,
+              150
+            )}...`
+          : incident.description}
       </p>
 
       <p>
-        Severity: {incident.severity}
+        <strong>Category:</strong>{" "}
+        {incident.category}
       </p>
 
       <p>
-        Status: {incident.status}
+        <strong>Severity:</strong>{" "}
+        {incident.severity}
       </p>
 
       <p>
-        Location: {incident.location?.address}
+        <strong>Status:</strong>{" "}
+        {incident.status}
       </p>
 
       <p>
-        Reported by:{" "}
-        {incident.reportedBy?.name || "Unknown"}
+        <strong>Location:</strong>{" "}
+        {incident.location?.address ||
+          "Location unavailable"}
       </p>
 
-      <Link to={`/incidents/${incident._id}`}>
+      <p>
+        <strong>Reported by:</strong>{" "}
+        {incident.reportedBy?.name ||
+          "Unknown"}
+      </p>
+
+      <p>
+        <strong>Upvotes:</strong>{" "}
+        {incident.upvotes?.length || 0}
+      </p>
+
+      <Link
+        to={`/incidents/${incident._id}`}
+      >
         View Details
       </Link>
 

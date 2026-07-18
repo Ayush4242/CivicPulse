@@ -7,7 +7,6 @@ import LocationPicker from "../components/LocationPicker";
 function ReportIncident() {
   const navigate = useNavigate();
 
-  // Incident form data
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -16,15 +15,14 @@ function ReportIncident() {
     address: "",
   });
 
-  // Map position
   const [position, setPosition] = useState(null);
+  const [images, setImages] = useState([]);
+  const [imagePreviews, setImagePreviews] = useState([]);
 
-  // UI states
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [locationLoading, setLocationLoading] = useState(false);
 
-  // Handle input changes
   const handleChange = (e) => {
     setFormData({
       ...formData,
@@ -32,7 +30,59 @@ function ReportIncident() {
     });
   };
 
-  // Get user's current GPS location
+  const handleImageChange = (e) => {
+    const selectedFiles = Array.from(e.target.files);
+
+    setError("");
+
+    if (selectedFiles.length > 5) {
+      setError("Maximum 5 images are allowed.");
+      e.target.value = "";
+      return;
+    }
+
+    const invalidFile = selectedFiles.find(
+      (file) =>
+        ![
+          "image/jpeg",
+          "image/png",
+          "image/webp",
+        ].includes(file.type)
+    );
+
+    if (invalidFile) {
+      setError(
+        "Only JPG, PNG and WEBP images are allowed."
+      );
+      e.target.value = "";
+      return;
+    }
+
+    const oversizedFile = selectedFiles.find(
+      (file) => file.size > 5 * 1024 * 1024
+    );
+
+    if (oversizedFile) {
+      setError(
+        "Each image must be smaller than 5 MB."
+      );
+      e.target.value = "";
+      return;
+    }
+
+    imagePreviews.forEach((preview) => {
+      URL.revokeObjectURL(preview);
+    });
+
+    setImages(selectedFiles);
+
+    const previews = selectedFiles.map((file) =>
+      URL.createObjectURL(file)
+    );
+
+    setImagePreviews(previews);
+  };
+
   const getCurrentLocation = () => {
     if (!navigator.geolocation) {
       setError(
@@ -55,7 +105,10 @@ function ReportIncident() {
       },
 
       (error) => {
-        console.error("Geolocation error:", error);
+        console.error(
+          "Geolocation error:",
+          error
+        );
 
         setError(
           "Unable to access your location. Please select the location manually on the map."
@@ -72,7 +125,6 @@ function ReportIncident() {
     );
   };
 
-  // Submit incident
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -80,9 +132,30 @@ function ReportIncident() {
     setLoading(true);
 
     try {
-      // Combine form data with selected coordinates
+      let uploadedImageUrls = [];
+
+      // Step 1: Upload images to Cloudinary
+      if (images.length > 0) {
+        const imageData = new FormData();
+
+        images.forEach((image) => {
+          imageData.append("images", image);
+        });
+
+        const uploadResponse = await api.post(
+          "/api/upload/images",
+          imageData
+        );
+
+        uploadedImageUrls =
+          uploadResponse.data.images;
+      }
+
+      // Step 2: Prepare incident data
       const incidentData = {
         ...formData,
+
+        images: uploadedImageUrls,
 
         ...(position && {
           latitude: position.latitude,
@@ -90,21 +163,25 @@ function ReportIncident() {
         }),
       };
 
+      // Step 3: Create incident
       const response = await api.post(
         "/api/incidents",
         incidentData
       );
 
-      // Redirect to newly created incident
+      // Step 4: Open created incident
       navigate(
         `/incidents/${response.data.incident._id}`
       );
     } catch (error) {
-      console.error("Incident submission error:", error);
+      console.error(
+        "Incident submission error:",
+        error
+      );
 
       setError(
         error.response?.data?.message ||
-          "Unable to report incident"
+          "Unable to report incident."
       );
     } finally {
       setLoading(false);
@@ -115,15 +192,9 @@ function ReportIncident() {
     <div>
       <h1>Report an Incident</h1>
 
-      {error && (
-        <p>
-          {error}
-        </p>
-      )}
+      {error && <p>{error}</p>}
 
       <form onSubmit={handleSubmit}>
-
-        {/* Title */}
 
         <div>
           <label>Incident Title</label>
@@ -138,8 +209,6 @@ function ReportIncident() {
           />
         </div>
 
-        {/* Description */}
-
         <div>
           <label>Description</label>
 
@@ -152,7 +221,38 @@ function ReportIncident() {
           />
         </div>
 
-        {/* Category */}
+        <div>
+          <label>Incident Photos</label>
+
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            multiple
+            onChange={handleImageChange}
+          />
+
+          <p>
+            Upload up to 5 JPG, PNG or WEBP
+            images. Maximum 5 MB each.
+          </p>
+
+          {imagePreviews.length > 0 && (
+            <div>
+              {imagePreviews.map(
+                (preview, index) => (
+                  <img
+                    key={preview}
+                    src={preview}
+                    alt={`Incident preview ${
+                      index + 1
+                    }`}
+                    width="150"
+                  />
+                )
+              )}
+            </div>
+          )}
+        </div>
 
         <div>
           <label>Category</label>
@@ -196,8 +296,6 @@ function ReportIncident() {
           </select>
         </div>
 
-        {/* Severity */}
-
         <div>
           <label>Severity</label>
 
@@ -220,10 +318,10 @@ function ReportIncident() {
           </select>
         </div>
 
-        {/* Address */}
-
         <div>
-          <label>Address / Location Description</label>
+          <label>
+            Address / Location Description
+          </label>
 
           <input
             type="text"
@@ -234,8 +332,6 @@ function ReportIncident() {
             required
           />
         </div>
-
-        {/* GPS */}
 
         <div>
           <h3>Incident Location</h3>
@@ -257,16 +353,12 @@ function ReportIncident() {
               {position.longitude.toFixed(6)}
             </p>
           )}
+
+          <LocationPicker
+            position={position}
+            setPosition={setPosition}
+          />
         </div>
-
-        {/* Interactive Map */}
-
-        <LocationPicker
-          position={position}
-          setPosition={setPosition}
-        />
-
-        {/* Submit */}
 
         <button
           type="submit"

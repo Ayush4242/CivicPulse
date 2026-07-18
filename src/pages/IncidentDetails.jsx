@@ -15,6 +15,7 @@ function IncidentDetails() {
     const fetchIncident = async () => {
       try {
         setLoading(true);
+        setError("");
 
         const response = await api.get(
           `/api/incidents/${id}`
@@ -29,7 +30,7 @@ function IncidentDetails() {
 
         setError(
           error.response?.data?.message ||
-            "Unable to load incident"
+            "Unable to load incident."
         );
       } finally {
         setLoading(false);
@@ -39,25 +40,20 @@ function IncidentDetails() {
     fetchIncident();
   }, [id]);
 
-  // Loading state
   if (loading) {
     return <p>Loading incident...</p>;
   }
 
-  // Error state
   if (error) {
     return <p>{error}</p>;
   }
 
-  // Incident not found
   if (!incident) {
     return <p>Incident not found.</p>;
   }
 
   return (
     <div>
-
-      {/* Incident Header */}
 
       <section>
         <h1>{incident.title}</h1>
@@ -66,8 +62,6 @@ function IncidentDetails() {
       </section>
 
       <hr />
-
-      {/* Incident Information */}
 
       <section>
         <h2>Incident Information</h2>
@@ -110,8 +104,6 @@ function IncidentDetails() {
 
       <hr />
 
-      {/* Evidence Photos */}
-
       <section>
         <h2>Evidence Photos</h2>
 
@@ -122,7 +114,9 @@ function IncidentDetails() {
                 <img
                   key={`${image}-${index}`}
                   src={image}
-                  alt={`Evidence ${index + 1}`}
+                  alt={`Incident evidence ${
+                    index + 1
+                  }`}
                   width="300"
                   loading="lazy"
                 />
@@ -130,13 +124,13 @@ function IncidentDetails() {
             )}
           </div>
         ) : (
-          <p>No evidence photos uploaded.</p>
+          <p>
+            No evidence photos uploaded.
+          </p>
         )}
       </section>
 
       <hr />
-
-      {/* Location */}
 
       <section>
         <h2>Location</h2>
@@ -151,20 +145,16 @@ function IncidentDetails() {
 
       <hr />
 
-      {/* Community Information */}
-
       <section>
         <h2>Community Activity</h2>
 
         <p>
-          Upvotes:{" "}
+          <strong>Upvotes:</strong>{" "}
           {incident.upvotes?.length || 0}
         </p>
       </section>
 
       <hr />
-
-      {/* Timeline */}
 
       <section>
         <h2>Incident Timeline</h2>

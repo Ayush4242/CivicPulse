@@ -5,7 +5,7 @@ const morgan = require("morgan");
 const incidentRoutes = require("./routes/incidentRoutes");
 const connectDB = require("./config/db");
 const authRoutes = require("./routes/authRoutes");
-
+const uploadRoutes = require("./routes/uploadRoutes");
 dotenv.config();
 
 connectDB();
@@ -18,7 +18,7 @@ app.use("/api/incidents", incidentRoutes);
 app.use(cors());
 app.use(express.json());
 app.use(morgan("dev"));
-
+app.use("/api/upload", uploadRoutes);
 // Routes
 app.use("/api/auth", authRoutes);
 
