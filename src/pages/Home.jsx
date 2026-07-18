@@ -1,26 +1,77 @@
 import { useEffect, useState } from "react";
+
 import api from "../services/api";
+import IncidentCard from "../components/IncidentCard";
 
 function Home() {
-  const [message, setMessage] = useState("");
+  const [incidents, setIncidents] = useState([]);
+
+  const [loading, setLoading] = useState(true);
+
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    const fetchAPI = async () => {
+
+    const fetchIncidents = async () => {
+
       try {
-        const res = await api.get("/");
-        setMessage(res.data.message);
-      } catch (err) {
-        console.error(err);
+
+            const response = await api.get("/api/incidents");
+
+      setIncidents(
+        Array.isArray(response.data?.incidents)
+          ? response.data.incidents
+          : []
+      );
+
+    } catch (error) {
+
+        setError(
+          error.response?.data?.message ||
+            "Unable to load incidents"
+        );
+
+      } finally {
+
+        setLoading(false);
+
       }
     };
 
-    fetchAPI();
+    fetchIncidents();
+
   }, []);
+
+  if (loading) {
+    return <p>Loading incidents...</p>;
+  }
+
+  if (error) {
+    return <p>{error}</p>;
+  }
 
   return (
     <div>
-      <h1>CivicPulse</h1>
-      <p>{message}</p>
+
+      <h1>Community Incidents</h1>
+
+      {incidents.length === 0 ? (
+
+        <p>No incidents reported yet.</p>
+
+      ) : (
+
+        incidents.map((incident) => (
+
+          <IncidentCard
+            key={incident._id}
+            incident={incident}
+          />
+
+        ))
+
+      )}
+
     </div>
   );
 }
