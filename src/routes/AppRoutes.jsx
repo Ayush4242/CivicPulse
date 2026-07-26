@@ -11,6 +11,10 @@ import Login from "../pages/Login";
 import Signup from "../pages/Signup";
 import ReportIncident from "../pages/ReportIncident";
 import IncidentDetails from "../pages/IncidentDetails";
+import ModeratorDashboard from "../pages/ModeratorDashboard";
+import StaffDashboard from "../pages/StaffDashboard";
+import AdminDashboard from "../pages/AdminDashboard";
+import Leaderboard from "../pages/Leaderboard";
 import NotFound from "../pages/NotFound";
 
 function AppRoutes() {
@@ -21,6 +25,7 @@ function AppRoutes() {
         <Route element={<MainLayout />}>
 
           <Route path="/" element={<Home />} />
+          <Route path="/leaderboard" element={<Leaderboard />} />
 
           <Route
             path="/incidents/:id"
@@ -29,12 +34,27 @@ function AppRoutes() {
 
           <Route element={<ProtectedRoute />}>
 
-  <Route
-    path="/report"
-    element={<ReportIncident />}
-  />
+            <Route
+              path="/report"
+              element={<ReportIncident />}
+            />
 
-</Route>
+            <Route
+              path="/moderator"
+              element={<ModeratorDashboard />}
+            />
+
+            <Route
+              path="/staff"
+              element={<StaffDashboard />}
+            />
+
+            <Route
+              path="/admin"
+              element={<AdminDashboard />}
+            />
+
+          </Route>
 
           <Route path="/login" element={<Login />} />
 

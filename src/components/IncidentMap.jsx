@@ -1,44 +1,39 @@
-import {
-  MapContainer,
-  TileLayer,
-  Marker,
-  Popup,
-} from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 
 function IncidentMap({ incident }) {
-  const coordinates =
-    incident.location?.coordinates?.coordinates;
+  const coordinates = incident.location?.coordinates?.coordinates;
 
   if (!coordinates || coordinates.length !== 2) {
-    return <p>Map location unavailable.</p>;
+    return <div className="empty-wrap" style={{ padding: "20px" }}>Location coordinate details unavailable.</div>;
   }
 
   const [longitude, latitude] = coordinates;
 
   return (
-    <MapContainer
-      center={[latitude, longitude]}
-      zoom={16}
-      style={{
-        height: "350px",
-        width: "100%",
-      }}
-    >
-      <TileLayer
-        attribution="&copy; OpenStreetMap contributors"
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
+    <div style={{ borderRadius: "8px", overflow: "hidden", border: "1px solid var(--border-subtle)" }}>
+      <MapContainer
+        center={[latitude, longitude]}
+        zoom={16}
+        style={{
+          height: "300px",
+          width: "100%",
+        }}
+      >
+        <TileLayer
+          attribution='&copy; <a href="https://carto.com/">CARTO</a>'
+          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+        />
 
-      <Marker position={[latitude, longitude]}>
-        <Popup>
-          <strong>{incident.title}</strong>
-
-          <br />
-
-          {incident.location.address}
-        </Popup>
-      </Marker>
-    </MapContainer>
+        <Marker position={[latitude, longitude]}>
+          <Popup>
+            <div style={{ color: "#000" }}>
+              <strong>{incident.title}</strong>
+              <div style={{ fontSize: "0.8rem", marginTop: "4px" }}>{incident.location.address}</div>
+            </div>
+          </Popup>
+        </Marker>
+      </MapContainer>
+    </div>
   );
 }
 

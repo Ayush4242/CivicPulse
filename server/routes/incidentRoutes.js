@@ -8,6 +8,10 @@ const {
   deleteIncident,
   checkDuplicates,
   toggleUpvote,
+  updateIncidentStatus,
+  assignIncident,
+  getModerationStats,
+  staffReport,
 } = require(
   "../controllers/incidentController"
 );
@@ -24,6 +28,13 @@ router.post(
   "/check-duplicates",
   protect,
   checkDuplicates
+);
+
+// Moderation stats (must be defined before /:id parameter matching)
+router.get(
+  "/moderation/stats",
+  protect,
+  getModerationStats
 );
 
 // Incident collection
@@ -55,5 +66,23 @@ router
     protect,
     deleteIncident
   );
+
+router.put(
+  "/:id/status",
+  protect,
+  updateIncidentStatus
+);
+
+router.patch(
+  "/:id/assign",
+  protect,
+  assignIncident
+);
+
+router.post(
+  "/:id/staff-report",
+  protect,
+  staffReport
+);
 
 module.exports = router;
